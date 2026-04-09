@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Rentabilidade Agrícola | Andre Mathews</title>
+    <!-- Fonte Google -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #1B5E20; /* Verde Escuro Profissional */
+            --accent-color: #4CAF50;
+            --bg-color: #F0F2F5;
+            --card-bg: #FFFFFF;
+            --text-color: #333;
+            --danger-color: #D32F2F;
+            --warning-color: #F57C00;
+            --success-color: #2E7D32;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            color: var(--text-color);
+        }
+
+        /* Cabeçalho */
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--success-color));
+            color: white;
+            padding: 25px 20px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        header h1 { margin: 0; font-size: 1.8rem; letter-spacing: 1px; }
+        header p { margin: 8px 0 0; font-size: 0.95rem; opacity: 0.9; }
+
+        /* Container Principal */
+        .container {
+            max-width: 1100px;
+            margin: 30px auto;
+            padding: 0 15px;
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 25px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: transform 0.3s;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.3rem;
+            color: var(--primary-color);
+            border-bottom: 2px solid #eee;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        /* Insight Box */
+        .insight-box {
+            background-color: #f8f9fa;
+            border-left: 5px solid #ccc;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 4px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: fadeIn 0.5s ease;
+        }
+        .insight-box.safe { background-color: #e8f5e9; border-color: var(--success-color); color: var(--success-color); }
+        .insight-box.warning { background-color: #fff3e0; border-color: var(--warning-color); color: var(--warning-color); }
+        .insight-box.danger { background-color: #ffebee; border-color: var(--danger-color); color: var(--danger-color); }
+
+        /* KPIs */
+        .kpi-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .kpi-card {
+            background: #fafafa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #eee;
+            position: relative; /* Para Tooltip */
+        }
+        .kpi-card.negative { background: #ffebee; border-color: #ffcdd2; color: var(--danger-color); }
+        .kpi-card.positive { background: #e8f5e9; border-color: #c8e6c9; color: var(--success-color); }
+        
+        .kpi-value { 
+            font-size: 1.6rem; 
+            font-weight: 700; 
+            display: block; 
+            margin-top: 5px; 
+            transition: color 0.3s;
+        }
+        .kpi-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #666; font-weight: 500; }
+
+        /* Tooltip CSS */
+        .tooltip-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            background: #ccc;
+            color: white;
+            border-radius: 50%;
+            font-size: 10px;
+            line-height: 16px;
+            text-align: center;
+            cursor: help;
+            margin-left: 5px;
+        }
+        .kpi-card:hover .tooltip-text { visibility: visible; opacity: 1; }
+        .tooltip-text {
+            visibility: hidden;
+            width: 180px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 110%;
+            left: 50%;
+            margin-left: -90px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.75rem;
+            font-weight: normal;
+            pointer-events: none;
+        }
+
+        /* Inputs */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 500; font-size: 0.9rem; color: #444; }
+        .form-group input[type="range"] { 
+            width: 100%; 
+            cursor: pointer; 
+            height: 6px;
+            background: #ddd;
+            border-radius: 5px;
+            appearance: none;
+        }
+        .form-group input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background .15s ease-in-out;
+        }
+        .value-display { color: var(--primary-color); font-weight: 700; background: #e8f5e9; padding: 2px 8px; border-radius: 4px; }
+
+        /* Gráfico */
+        .chart-container { position: relative; height: 300px; width: 100%; }
+
+        /* Rodapé */
+        footer { text-align: center; padding: 30px; font-size: 0.8rem; color: #888; margin-top: 20px; border-top: 1px solid #ddd; background: white; }
+        footer a { color: var(--primary-color); text-decoration: none; font-weight: bold; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Responsivo */
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+            header h1 { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🚜 Simulador de Rentabilidade Agrícola</h1>
+        <p>Planejamento Financeiro por Hectare | Projeto por Andre Mathews</p>
+    </header>
+
+    <div class="container">
+        
+        <!-- Coluna da Esquerda: Controles -->
+        <div class="card">
+            <h2>⚙️ Parâmetros da Simulação</h2>
+            <p style="font-size: 0.85rem; color: #666; margin-bottom: 20px;">Ajuste os valores abaixo. Os dados são salvos automaticamente.</p>
+            
+            <h3 style="font-size: 1rem; color: #555;">1. Custos (R$/ha)</h3>
+            
+            <div class="form-group">
+                <label>Insumos (Sementes, Adubo...) <span class="value-display" id="disp-insumos">R$ 0</span></label>
+                <input type="range" id="input-insumos" min="0" max="2500" step="10" value="731">
+            </div>
+            <div class="form-group">
+                <label>Mão de Obra <span class="value-display" id="disp-mao">R$ 0</span></label>
+                <input type="range" id="input-mao" min="0" max="2500" step="10" value="685">
+            </div>
+            <div class="form-group">
+                <label>Maquinário (Diesel, Manutenção) <span class="value-display" id="disp-maq">R$ 0</span></label>
+                <input type="range" id="input-maq" min="0" max="2500" step="10" value="200">
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 25px 0;">
+
+            <h3 style="font-size: 1rem; color: #555;">2. Receita (Produção)</h3>
+            <div class="form-group">
+                <label>Produtividade (ton/ha) <span class="value-display" id="disp-prod">0</span></label>
+                <input type="range" id="input-prod" min="10" max="180" step="0.5" value="87.26">
+            </div>
+            <div class="form-group">
+                <label>Preço de Venda (R$/ton) <span class="value-display" id="disp-preco">R$ 0</span></label>
+                <input type="range" id="input-preco" min="50" max="400" step="5" value="180">
+            </div>
+        </div>
+
+        <!-- Coluna da Direita: Resultados -->
+        <div class="card">
+            <h2>📊 Análise de Rentabilidade</h2>
+            
+            <!-- Insight Inteligente -->
+            <div id="insight-box" class="insight-box">
+                <span style="font-size: 1.2rem;">ℹ️</span>
+                <span id="insight-text">Ajuste os parâmetros para ver a análise.</span>
+            </div>
+
+            <div class="kpi-container">
+                <div class="kpi-card">
+                    <span class="kpi-label">Receita Bruta <span class="tooltip-icon">?<span class="tooltip-text">Valor total de venda da safra (Produtividade × Preço)</span></span></span>
+                    <span class="kpi-value" id="res-receita">R$ 0,00</span>
+                </div>
+                <div class="kpi-card negative">
+                    <span class="kpi-label">Custo Total <span class="tooltip-icon">?<span class="tooltip-text">Soma de Insumos + Mão de Obra + Maquinário</span></span></span>
+                    <span class="kpi-value" id="res-custo">R$ 0,00</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Lucro Líquido <span class="tooltip-icon">?<span class="tooltip-text">Receita Bruta menos Custo Total</span></span></span>
+                    <span class="kpi-value" id="res-lucro">R$ 0,00</span>
+                </div>
+                <div class="kpi-card">
+                    <span class="kpi-label">Margem Líquida <span class="tooltip-icon">?<span class="tooltip-text">Porcentagem de lucro sobre a receita</span></span></span>
+                    <span class="kpi-value" id="res-margem">0%</span>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="myChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <footer>
+        Desenvolvido por <a href="https://github.com/andremathews" target="_blank">Andre Mathews</a> | 
+        Verifique o código fonte no <a href="https://github.com/andremathews/calculadora-custo-agro" target="_blank">GitHub</a>
+    </footer>
+
+    <script>
+        // Elementos
+        const inputs = {
+            insumos: document.getElementById('input-insumos'),
+            mao: document.getElementById('input-mao'),
+            maq: document.getElementById('input-maq'),
+            prod: document.getElementById('input-prod'),
+            preco: document.getElementById('input-preco')
+        };
+
+        const displays = {
+            insumos: document.getElementById('disp-insumos'),
+            mao: document.getElementById('disp-mao'),
+            maq: document.getElementById('disp-maq'),
+            prod: document.getElementById('disp-prod'),
+            preco: document.getElementById('disp-preco'),
+            receita: document.getElementById('res-receita'),
+            custo: document.getElementById('res-custo'),
+            lucro: document.getElementById('res-lucro'),
+            margem: document.getElementById('res-margem')
+        };
+
+        const insightBox = document.getElementById('insight-box');
+        const insightText = document.getElementById('insight-text');
+
+        let myChart;
+
+        // Função de Formatação Moeda
+        const fmt = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        // Função de Animação de Números
+        function animateValue(obj, start, end, duration, isMoney) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const currentVal = Math.floor(progress * (end - start) + start);
+                obj.innerHTML = isMoney ? fmt(currentVal) : (currentVal / 100).toFixed(2); // Simplificação para demo
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                } else {
+                    // Valor final exato
+                    obj.innerHTML = isMoney ? fmt(end) : end.toFixed(2);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        // Calcular e Atualizar
+        function calculate() {
+            const valInsumos = parseFloat(inputs.insumos.value);
+            const valMao = parseFloat(inputs.mao.value);
+            const valMaq = parseFloat(inputs.maq.value);
+            const valProd = parseFloat(inputs.prod.value);
+            const valPreco = parseFloat(inputs.preco.value);
+
+            // Atualizar Displays dos Sliders
+            displays.insumos.textContent = fmt(valInsumos);
+            displays.mao.textContent = fmt(valMao);
+            displays.maq.textContent = fmt(valMaq);
+            displays.prod.textContent = valProd.toFixed(2);
+            displays.preco.textContent = fmt(valPreco);
+
+            // Lógica
+            const custoTotal = valInsumos + valMao + valMaq;
+            const receita = valProd * valPreco;
+            const lucro = receita - custoTotal;
+            const margem = receita > 0 ? (lucro / receita) * 100 : 0;
+
+            // Atualizar KPIs (sem animação complexa para manter performance, mas com formatação)
+            displays.receita.textContent = fmt(receita);
+            displays.custo.textContent = fmt(custoTotal);
+            displays.lucro.textContent = fmt(lucro);
+            displays.margem.textContent = margem.toFixed(2) + '%';
+
+            // Estilo do Lucro
+            const cardLucro = displays.lucro.parentElement;
+            if (lucro < 0) {
+                cardLucro.className = 'kpi-card negative';
+                cardLucro.style.color = 'var(--danger-color)';
+            } else {
+                cardLucro.className = 'kpi-card positive';
+                cardLucro.style.color = 'var(--success-color)';
+            }
+
+            // 1. Insight Automático
+            updateInsight(margem, lucro);
+
+            // 2. Gráfico de Barras (Receita vs Custo vs Lucro)
+            updateChart(receita, custoTotal, lucro);
+
+            // 3. Persistência (Salvar no LocalStorage)
+            localStorage.setItem('calc_insumos', valInsumos);
+            localStorage.setItem('calc_mao', valMao);
+            localStorage.setItem('calc_maq', valMaq);
+            localStorage.setItem('calc_prod', valProd);
+            localStorage.setItem('calc_preco', valPreco);
+        }
+
+        // 1. Lógica de Insight
+        function updateInsight(margem, lucro) {
+            insightBox.className = 'insight-box'; // Reset
+            let msg = "";
+            let icon = "ℹ️";
+
+            if (lucro < 0) {
+                msg = "❌ <b>Prejuízo detectado.</b> Seus custos superam a receita. Revise a eficiência dos insumos ou renegocie o preço de venda.";
+                insightBox.classList.add('danger');
+                icon = "🚨";
+            } else if (margem < 15) {
+                msg = "⚠️ <b>Margem Baixa.</b> A operação é viável, mas o risco é alto. Qualquer queda no preço ou produtividade pode gerar prejuízo.";
+                insightBox.classList.add('warning');
+                icon = "⚠️";
+            } else if (margem >= 15 && margem < 30) {
+                msg = "✅ <b>Operação Saudável.</b> Margem dentro do esperado para o setor. Mantenha o controle de custos para garantir o lucro.";
+                insightBox.classList.add('safe');
+                icon = "✅";
+            } else {
+                msg = "🚀 <b>Excelente Rentabilidade!</b> Margem acima de 30%. Ótimo momento para reinvestir ou expandir a área.";
+                insightBox.classList.add('safe');
+                icon = "🏆";
+            }
+            
+            insightBox.innerHTML = `<span style="font-size:1.2rem">${icon}</span> <span>${msg}</span>`;
+        }
+
+        // 2. Gráfico de Barras
+        function initChart() {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                 {
+                    labels: ['Receita Bruta', 'Custo Total', 'Lucro Líquido'],
+                    datasets: [{
+                        label: 'Valores (R$)',
+                        data: [0, 0, 0],
+                        backgroundColor: ['#2E7D32', '#D32F2F', '#1976D2'],
+                        borderRadius: 6,
+                        barThickness: 40
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) { label += ': '; }
+                                    if (context.parsed.y !== null) {
+                                        label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: (v) => 'R$ ' + v/1000 + 'k' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateChart(receita, custo, lucro) {
+            myChart.data.datasets[0].data = [receita, custo, lucro];
+            
+            // Cor dinâmica do lucro
+            if(lucro < 0) {
+                myChart.data.datasets[0].backgroundColor[2] = '#D32F2F'; // Vermelho se negativo
+            } else {
+                myChart.data.datasets[0].backgroundColor[2] = '#1976D2'; // Azul se positivo
+            }
+            myChart.update();
+        }
+
+        // 3. Carregar Dados Salvos (Persistência)
+        function loadSavedData() {
+            if(localStorage.getItem('calc_insumos')) inputs.insumos.value = localStorage.getItem('calc_insumos');
+            if(localStorage.getItem('calc_mao')) inputs.mao.value = localStorage.getItem('calc_mao');
+            if(localStorage.getItem('calc_maq')) inputs.maq.value = localStorage.getItem('calc_maq');
+            if(localStorage.getItem('calc_prod')) inputs.prod.value = localStorage.getItem('calc_prod');
+            if(localStorage.getItem('calc_preco')) inputs.preco.value = localStorage.getItem('calc_preco');
+        }
+
+        // Event Listeners
+        Object.values(inputs).forEach(input => {
+            input.addEventListener('input', calculate);
+        });
+
+        // Inicializar
+        loadSavedData();
+        initChart();
+        calculate();
+
+    </script>
+</body>
+</html>
